@@ -9,18 +9,19 @@ typedef struct coordinate {
     int y;
 } coordinate;
 // Maybe some of your own function prototypes here
-
+coordinate convert_to_coord(int x, int y);
 bool is_valid(char ch);
 bool is_rule2_condition(int num_unk, int grid_val, int num_mines);
-bool is_valid_coord(int row, int col, int height, int width);
+bool is_valid_coord(coordinate c, coordinate max_limit);
 void fill_string_with_null(char s[MAXSQ * MAXSQ + 1]);
 int count_discovered_mines(board* b);
 bool apply_rule1(board* b, int mines_discovered);
 bool apply_rule2(board* b);
-int count_neighbour_target(board* b, int i, int j, int target);
-void fill_unknowns_mines(board* b, int i, int j);
+int count_neighbour_target(board* b, coordinate current, int target);
+void fill_unknowns_mines(board* b, coordinate  current);
 static inline int int_to_char(int a);
 static inline int char_to_int(int a);
+void test_convert_to_coord(void);
 void test_is_valid_coord(void);
 void test_is_valid(void);
 void test_rule1(void);
@@ -30,6 +31,7 @@ void test_count_neighbour_target(void);
 void test_fill_unknowns_mines(void);
 void test_rule2(void);
 void test_is_rule2_condition(void);
+void test_rectangle_grid(void);
 
 const int dir_x[NUMDIRECTIONS] = {1, 1, 0, -1, -1, -1, 0, 1}; // x coord offset for 8 directions
 const int dir_y[NUMDIRECTIONS] = {0, 1, 1, 1, 0, -1, -1, -1}; // y coord offset for 8 directions
@@ -53,7 +55,8 @@ void board2str(char s[MAXSQ * MAXSQ + 1], board b) {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             int pos = i * width + j;
-            s[pos] = b.grid[i][j];
+            coordinate cur = convert_to_coord(i, j);
+            s[pos] = b.grid[cur.x][cur.y];
         }
     }
 }
@@ -88,20 +91,21 @@ board make_board(int totmines, int width, int height, char inp[MAXSQ * MAXSQ + 1
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             int pos = i * width + j;
-            b.grid[i][j] = inp[pos];
+            coordinate cur = convert_to_coord(i, j);
+            b.grid[cur.x][cur.y] = inp[pos];
         }
     }
 
     return b;
 }
-
+// function to check if a character in a board is valid or not
 bool is_valid(char ch) {
     if (ch == UNK || ch == MINE || (ch >= MINNEIGHBOURS && ch <= MAXNEIGHBOURS)) {
         return true;
     }
     return false;
 }
-
+// function to fill string with null characters
 void fill_string_with_null(char s[MAXSQ * MAXSQ + 1]) {
     for (int i = 0; i < MAXSQ * MAXSQ + 1; i++) {
         s[i] = '\0';
@@ -115,7 +119,8 @@ int count_discovered_mines(board* b) {
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            if (b->grid[i][j] == MINE) {
+            coordinate cur = convert_to_coord(i, j);
+            if (b->grid[cur.x][cur.y] == MINE) {
                 count++;
             }
         }
@@ -134,9 +139,10 @@ bool apply_rule1(board* b, int mines_discovered) {
     bool flag = false; // flag to check if a value has been updated
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            if (b->grid[i][j] == UNK) {
-                int value_to_fill = count_neighbour_target(b, i, j, MINE); // number of mines around the cell
-                b->grid[i][j] = value_to_fill;
+            coordinate cur = convert_to_coord(i, j);
+            if (b->grid[cur.x][cur.y] == UNK) {
+                int value_to_fill = count_neighbour_target(b, cur, MINE); // number of mines around the cell
+                b->grid[cur.x][cur.y] = value_to_fill;
                 flag = true;
             }
         }
@@ -151,12 +157,13 @@ bool apply_rule2(board* b) {
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            if (b->grid[i][j] >= MINNEIGHBOURS && b->grid[i][j] <= MAXNEIGHBOURS) {
-                int num_unk = count_neighbour_target(b, i, j, UNK); // number of unknowns around the cell
-                int num_mines = count_neighbour_target(b, i, j, MINE); // number of mines around the cell
+            coordinate cur = convert_to_coord(i, j);
+            if (b->grid[cur.x][cur.y] >= MINNEIGHBOURS && b->grid[cur.x][cur.y] <= MAXNEIGHBOURS) {
+                int num_unk = count_neighbour_target(b, cur, UNK); // number of unknowns around the cell
+                int num_mines = count_neighbour_target(b, cur, MINE); // number of mines around the cell
 
-                if (is_rule2_condition(num_unk, b->grid[i][j], num_mines)) {
-                    fill_unknowns_mines(b, i, j);
+                if (is_rule2_condition(num_unk, b->grid[cur.x][cur.y], num_mines)) {
+                    fill_unknowns_mines(b, cur);
                     flag = true;
                 }
             }
@@ -174,35 +181,52 @@ bool is_rule2_condition(int num_unk, int grid_val, int num_mines) {
     }
     return false;
 }
-
-bool is_valid_coord(int row, int col, int height, int width) {
-    if (row < 0 || row >= height || col < 0 || col >= width) {
+// checks if a coordinate is valid or not
+bool is_valid_coord(coordinate c, coordinate max_limit) {
+    int row = c.x;
+    int col = c.y;
+    int width_max = max_limit.x;
+    int height_max = max_limit.y;
+    if (row < 0 || row >= width_max || col < 0 || col >= height_max) {
         return false;
     }
 
     return true;
 }
-
-int count_neighbour_target(board* b, int i, int j, int target) {
+// counts neighbouring cells with cell value == target
+int count_neighbour_target(board* b, coordinate current, int target) {
     int res = 0;
     for (int k = 0; k < NUMDIRECTIONS; k++) {
-        int neighX = i + dir_x[k];
-        int neighY = j + dir_y[k];
-        if (is_valid_coord(neighX, neighY, b->h, b->w) && b->grid[neighX][neighY] == target) {
+        int neigh_x = current.x + dir_x[k];
+        int neigh_y = current.y + dir_y[k];
+        coordinate neigh, max_limit;
+        max_limit = convert_to_coord(b->h, b->w);
+        neigh = convert_to_coord(neigh_x, neigh_y);
+        if (is_valid_coord(neigh, max_limit) && b->grid[neigh.x][neigh.y] == target) {
             res++;
         }
     }
     return int_to_char(res); // converting to char
 }
-
-void fill_unknowns_mines(board* b, int i, int j) {
+// fills neighbouring unknown cells with mines
+void fill_unknowns_mines(board* b, coordinate current) {
     for (int k = 0; k < NUMDIRECTIONS; k++) {
-        int newX = i + dir_x[k];
-        int newY = j + dir_y[k];
-        if (is_valid_coord(newX, newY, b->h, b->w) && b->grid[newX][newY] == UNK) {
-            b->grid[newX][newY] = MINE;
+        int new_x = current.x + dir_x[k];
+        int new_y = current.y + dir_y[k];
+        coordinate neigh, max_limit;
+        neigh = convert_to_coord(new_x, new_y);
+        max_limit = convert_to_coord(b->h, b->w);
+        if (is_valid_coord(neigh, max_limit) && b->grid[neigh.x][neigh.y] == UNK) {
+            b->grid[neigh.x][neigh.y] = MINE;
         }
     }
+}
+
+coordinate convert_to_coord(int x, int y){
+    coordinate res;
+    res.x = x;
+    res.y = y;
+    return res;
 }
 
 static inline int int_to_char(int a) {
@@ -216,9 +240,9 @@ static inline int char_to_int(int a) {
 // TEST Functions
 
 void test(void) {
+    test_convert_to_coord();
     test_is_valid();
     test_fill_string_with_null();
-    test_is_valid_coord();
     test_is_valid_coord();
     test_count_discovered_mines();
     test_count_neighbour_target();
@@ -226,6 +250,22 @@ void test(void) {
     test_rule1();
     test_rule2();
     test_is_rule2_condition();
+    test_rectangle_grid();
+
+}
+
+void test_convert_to_coord(void){
+    coordinate test_coord = convert_to_coord(0, 0);
+    assert(test_coord.x == 0);
+    assert(test_coord.y == 0);
+
+    test_coord = convert_to_coord(-1, -1);
+    assert(test_coord.x == -1);
+    assert(test_coord.y == -1);
+
+    test_coord = convert_to_coord(1000, -90);
+    assert(test_coord.x == 1000);
+    assert(test_coord.y == -90);
 }
 
 void test_is_valid(void) {
@@ -257,16 +297,28 @@ void test_fill_string_with_null(void) {
 }
 
 void test_is_valid_coord(void) {
-    assert(is_valid_coord(-1, 0, 8, 9) == false);
-    assert(is_valid_coord(0, -1, 8, 9) == false);
-    assert(is_valid_coord(100, 100, 8, 9) == false);
-    assert(is_valid_coord(-90, -12, 8, 9) == false);
-    assert(is_valid_coord(8, 9, 8, 9) == false);
+    coordinate test_coordinate, max_limit;
+    max_limit = convert_to_coord(8, 9);
+    test_coordinate = convert_to_coord(-1, 0);
 
-    assert(is_valid_coord(0, 0, 8, 9));
-    assert(is_valid_coord(7, 0, 8, 9));
-    assert(is_valid_coord(0, 8, 8, 9));
-    assert(is_valid_coord(4, 5, 8, 9));
+    assert(is_valid_coord(test_coordinate, max_limit) == false);
+    test_coordinate = convert_to_coord(0, -1);
+    assert(is_valid_coord(test_coordinate, max_limit) == false);
+    test_coordinate = convert_to_coord(100, 100);
+    assert(is_valid_coord(test_coordinate, max_limit) == false);
+    test_coordinate = convert_to_coord(-90, -12);
+    assert(is_valid_coord(test_coordinate, max_limit) == false);
+    test_coordinate = convert_to_coord(8, 9);
+    assert(is_valid_coord(test_coordinate, max_limit) == false);
+
+    test_coordinate = convert_to_coord(0, 0);
+    assert(is_valid_coord(test_coordinate, max_limit));
+    test_coordinate = convert_to_coord(7, 0);
+    assert(is_valid_coord(test_coordinate, max_limit));
+    test_coordinate = convert_to_coord(0, 8);
+    assert(is_valid_coord(test_coordinate, max_limit));
+    test_coordinate = convert_to_coord(4, 5);
+    assert(is_valid_coord(test_coordinate, max_limit));
 }
 
 void test_count_discovered_mines(void) {
@@ -280,17 +332,20 @@ void test_count_neighbour_target(void) {
     char str[MAXSQ * MAXSQ + 1];
     strcpy(str, "1111?1111");
     board b = make_board(1, 3, 3, str);
-    assert(count_neighbour_target(&b, 1, 1, '1') == int_to_char(8));
+    coordinate current = convert_to_coord(1, 1);
+    assert(count_neighbour_target(&b, current, '1') == int_to_char(8));
     strcpy(str, "0322236XXX3XXX52X44X1X333");
     b = make_board(9, 5, 5, str);
-    assert(count_neighbour_target(&b, 3, 2, MINE) == int_to_char(5));
+    current = convert_to_coord(3, 2);
+    assert(count_neighbour_target(&b, current, MINE) == int_to_char(5));
 }
 
 void test_fill_unknowns_mines(void) {
     char str[MAXSQ * MAXSQ + 1];
     strcpy(str, "0322236X??3XX?52X44?1X333");
     board b = make_board(9, 5, 5, str);
-    fill_unknowns_mines(&b, 2, 4);
+    coordinate coord_to_fill = convert_to_coord(2, 4);
+    fill_unknowns_mines(&b, coord_to_fill);
     board2str(str, b);
     assert(strcmp(str, "0322236XXX3XXX52X44X1X333") == 0);
 }
@@ -336,3 +391,19 @@ void test_is_rule2_condition(void) {
     assert(is_rule2_condition('1', '2', '1'));
 }
 
+void test_rectangle_grid(void){
+    char str[MAXSQ*MAXSQ+1];
+    strcpy(str, "0112?01X320112?");
+    assert(syntax_check(3, 5, 3, str) == true);
+    board b = make_board(3, 5, 3, str);
+    b = solve_board(b);
+    board2str(str, b);
+    assert(strcmp(str, "0112X01X320112X") == 0);
+
+    strcpy(str, "0?12X?1X??01??X");
+    assert(syntax_check(3, 5, 3, str) == true);
+    b = make_board(3, 5, 3, str);
+    b = solve_board(b);
+    board2str(str, b);
+    assert(strcmp(str, "0112X01X320112X") == 0);
+}
