@@ -9,6 +9,7 @@ typedef struct coordinate {
     int x;
     int y;
 } coordinate;
+
 // Maybe some of your own function prototypes here
 coordinate convert_to_coord(int x, int y);
 bool is_valid(char ch);
@@ -52,10 +53,10 @@ void board2str(char s[MAXSQ * MAXSQ + 1], board b) {
     int width = b.w;
     int height = b.h;
 
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            int pos = i * width + j;
-            coordinate cur = convert_to_coord(i, j);
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            int pos = row * width + col;
+            coordinate cur = convert_to_coord(row, col);
             s[pos] = b.grid[cur.x][cur.y];
         }
     }
@@ -71,12 +72,12 @@ bool syntax_check(unsigned totmines, unsigned width, unsigned height, char inp[M
         return false;
     }
 
-    int i = 0;
-    while (inp[i]) {
-        if (is_valid(inp[i]) == false) {
+    int index = 0;
+    while (inp[index]) {
+        if (is_valid(inp[index]) == false) {
             return false;
         }
-        i++;
+        index++;
     }
 
     return true;
@@ -88,14 +89,14 @@ board make_board(int totmines, int width, int height, char inp[MAXSQ * MAXSQ + 1
     b.h = height;
     b.totmines = totmines;
 
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            int pos = i * width + j;
-            coordinate cur = convert_to_coord(i, j);
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            int pos = row * width + col;
+            coordinate cur = convert_to_coord(row, col);
             b.grid[cur.x][cur.y] = inp[pos];
         }
     }
-return b;
+    return b;
 }
 // function to check if a character in a board is valid or not
 bool is_valid(char ch) {
@@ -116,9 +117,9 @@ int count_discovered_mines(board* b) {
     int width = b->w;
     int count = 0;
 
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            coordinate cur = convert_to_coord(i, j);
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            coordinate cur = convert_to_coord(row, col);
             if (b->grid[cur.x][cur.y] == MINE) {
                 count++;
             }
@@ -136,14 +137,14 @@ bool apply_rule1(board* b, int mines_discovered) {
     int height = b->h, width = b->w;
 
     bool flag = false; // flag to check if a value has been updated
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            coordinate cur = convert_to_coord(i, j);
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            coordinate cur = convert_to_coord(row, col);
             if (b->grid[cur.x][cur.y] == UNK) {
                 int value_to_fill = count_neighbour_target(b, cur, MINE); // number of mines around the cell
                 b->grid[cur.x][cur.y] = value_to_fill;
                 flag = true;
-                }
+            }
         }
     }
     return flag;
@@ -154,9 +155,9 @@ bool apply_rule2(board* b) {
     bool flag = false; // flag to check if a value has been updated
     int height = b->h, width = b->w;
 
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            coordinate cur = convert_to_coord(i, j);
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            coordinate cur = convert_to_coord(row, col);
             if (b->grid[cur.x][cur.y] >= MINNEIGHBOURS && b->grid[cur.x][cur.y] <= MAXNEIGHBOURS) {
                 int num_unk = count_neighbour_target(b, cur, UNK); // number of unknowns around the cell
                 int num_mines = count_neighbour_target(b, cur, MINE); // number of mines around the cell
@@ -404,4 +405,19 @@ void test_rectangle_grid(void){
     b = solve_board(b);
     board2str(str, b);
     assert(strcmp(str, "0112X01X320112X") == 0);
+
+    strcpy(str, "?001?2?100");
+    assert(syntax_check(2, 10, 1, str) == true);
+    b = make_board(2, 10, 1, str);
+    b = solve_board(b);
+    board2str(str, b);
+    assert(strcmp(str, "0001X2X100") == 0);
+
+    strcpy(str, "0002?20?000002?200?0");
+    assert(syntax_check(2, 10, 2, str) == true);
+    b = make_board(2, 10, 2, str);
+    b = solve_board(b);
+    board2str(str, b);
+    assert(strcmp(str, "0002X200000002X20000") == 0);
 }
+
