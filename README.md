@@ -3,7 +3,7 @@ A program to solve minesweeper boards using some basic strategies
 
 # Minesweeper Solver
 
-This repository contains a Python program that can solve Minesweeper boards using a combination of logic and rule-based approaches. Minesweeper is a popular logic puzzle game where the objective is to uncover all safe squares on a grid while avoiding hidden mines. The game is played on a two-dimensional grid of squares, and each square can be either empty or contain a mine. Numbered squares indicate how many mines are adjacent to that square within its Moore neighborhood.
+This repository contains a C program that can solve Minesweeper boards using a combination of logic and rule-based approaches. Minesweeper is a popular logic puzzle game where the objective is to uncover all safe squares on a grid while avoiding hidden mines. The game is played on a two-dimensional grid of squares, and each square can be either empty or contain a mine. Numbered squares indicate how many mines are adjacent to that square within its Moore neighborhood.
 
 ## Minesweeper Game
 
@@ -79,7 +79,7 @@ Repeated application of these rules will allow us to solve some Minesweeper boar
 To use this Minesweeper solver, follow these steps:
 
 1. Clone or download the repository.
-2. Run the Python script to input Minesweeper board configurations and apply the solving rules.
+2. Run the C script to input Minesweeper board configurations and apply the solving rules.
 
 Feel free to explore and modify the code to suit your needs.
 
