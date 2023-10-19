@@ -3,6 +3,7 @@
 #define NUMDIRECTIONS 8
 #define MAXNEIGHBOURS '8'
 #define MINNEIGHBOURS '0'
+#define NULLCHAR '\0'
 
 typedef struct coordinate {
     int x;
@@ -40,13 +41,12 @@ board solve_board(board b) {
     bool flag = true;
     while (flag) {
         int mines_discovered = count_discovered_mines(&b);
-        bool val1 = apply_rule1(&b, mines_discovered);
-        bool val2 = apply_rule2(&b);
-        flag = val1 || val2;
+        bool isBoardChanged1 = apply_rule1(&b, mines_discovered);
+        bool isBoardChanged2 = apply_rule2(&b);
+        flag = isBoardChanged1 || isBoardChanged2;
     }
     return b;
 }
-
 void board2str(char s[MAXSQ * MAXSQ + 1], board b) {
     fill_string_with_null(s);
     int width = b.w;
@@ -95,8 +95,7 @@ board make_board(int totmines, int width, int height, char inp[MAXSQ * MAXSQ + 1
             b.grid[cur.x][cur.y] = inp[pos];
         }
     }
-
-    return b;
+return b;
 }
 // function to check if a character in a board is valid or not
 bool is_valid(char ch) {
@@ -108,7 +107,7 @@ bool is_valid(char ch) {
 // function to fill string with null characters
 void fill_string_with_null(char s[MAXSQ * MAXSQ + 1]) {
     for (int i = 0; i < MAXSQ * MAXSQ + 1; i++) {
-        s[i] = '\0';
+        s[i] = NULLCHAR;
     }
 }
 
@@ -144,7 +143,7 @@ bool apply_rule1(board* b, int mines_discovered) {
                 int value_to_fill = count_neighbour_target(b, cur, MINE); // number of mines around the cell
                 b->grid[cur.x][cur.y] = value_to_fill;
                 flag = true;
-            }
+                }
         }
     }
     return flag;
@@ -238,7 +237,6 @@ static inline int char_to_int(int a) {
 }
 
 // TEST Functions
-
 void test(void) {
     test_convert_to_coord();
     test_is_valid();
@@ -247,9 +245,9 @@ void test(void) {
     test_count_discovered_mines();
     test_count_neighbour_target();
     test_fill_unknowns_mines();
+    test_is_rule2_condition();
     test_rule1();
     test_rule2();
-    test_is_rule2_condition();
     test_rectangle_grid();
 
 }
